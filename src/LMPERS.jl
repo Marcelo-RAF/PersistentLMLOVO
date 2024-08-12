@@ -545,109 +545,158 @@ function Levenberg(model, x, data, dim, ε, λ_min=0.7)
   return x, k, it
 end
 
+function MinimalLevenbergMarquardt(model,x,data,dim,ε,λ_min=0.7,n)
+    F = func(x, model, data)
+    J = diferential(model, x, data, dim)
+    xn = zeros(dim)
+    λ = 1.0
+    k = 1 
+    Id = Matrix{Float64}(I, n, n)
+    while norm((J') * F, 2) > ε && k <= 5 
+        d = (J' * J + λ * Id) \ ((-J') * F)
+        xn .= x .+ d
+        Fn = func(xn,model,data)
+        if norm(Fn, 2) <  norm(F, 2)
+            x = xn
+            if λ < λ_min
+                λ = λ_min
+            else
+                λ = λ / 2.0
+            end
+            F .= Fn
+            J = diferential(model, x, data, dim)
+        else
+            λ = 2.0 * λ 
+        end
+        k = k + 1
+    end
+    return x 
+end
+function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
+    ordres = sort_funcion_res(xk[1], model, data, nout)
+    antres = 0.0
+    k = 1
+    kk = 0
+    itt = 0
+    while abs(ordres[2] - antres) > ε
+        F = func(xk[1], model, ordres[1])
+        J = diferential(model, xk[1], ordres[1], dim)
+        antres = ordres[2]
+        xk = Levenberg(model, xk[1], ordres[1], dim, ε)
+        kk = kk + xk[2]
+        itt = itt + xk[3]
+        ordres = sort_funcion_res(xk[1], model, data, nout)
+        k = k + 1
+    end
+    #x = xk[1]
+    #x = x/norm(x[1:3])
+    return xk[1], kk, k, ordres[2], itt
+end
+
+
 #Para rodar LMPers insira chute inicial, modelo, os pontos do problema, a dimensão, uma função de ordenação --- o arquivo de funções nos scripts possui uma função que chama sort_funcion_res, ela funciona para qualquer modelo e por ultimo a quantidade de outliers --- o chute inicial deve ser uma tupla, ou seja, algo do tipo ([1.0, 1.0, 1.0, 1.0],0) -- > o 0 é para realizar a contagem de ordenações
 function LMPers(xk, model, data, dim, nout, ε=1.0e-4)
-  ordres = sort_funcion_res(xk[1], model, data, nout)
-  antres = 0.0
-  k = 1
-  kk = 0
-  itt = 0
-  while abs(ordres[2] - antres) > ε
-    F = func(xk[1], model, ordres[1])
-    J = diferential(model, xk[1], ordres[1], dim)
-    #display(norm((J') * F, 2))
-    if norm((J') * F, 2) * 0.01 > 1.0e-4
-      ε = norm((J') * F, 2) * 0.01
-    else
-      ε = 1.0e-4
-    end
-    #display(norm((J') * F, 2))
-    antres = ordres[2]
-    xk = Levenberg(model, xk[1], ordres[1], dim, ε)
-    kk = kk + xk[2]
-    itt = itt + xk[3]
     ordres = sort_funcion_res(xk[1], model, data, nout)
-    k = k + 1
-  end
-  #x = xk[1]
-  #x = x/norm(x[1:3])
-  return xk[1], kk, k, ordres[2], itt
+    antres = 0.0
+    k = 1
+    kk = 0
+    itt = 0
+    while abs(ordres[2] - antres) > ε
+        F = func(xk[1], model, ordres[1])
+        J = diferential(model, xk[1], ordres[1], dim)
+        #display(norm((J') * F, 2))
+        if norm((J') * F, 2) * 0.01 > 1.0e-4
+            ε = norm((J') * F, 2) * 0.01
+        else
+            ε = 1.0e-4
+        end
+        #display(norm((J') * F, 2))
+        antres = ordres[2]
+        xk = Levenberg(model, xk[1], ordres[1], dim, ε)
+        kk = kk + xk[2]
+        itt = itt + xk[3]
+        ordres = sort_funcion_res(xk[1], model, data, nout)
+        k = k + 1
+    end
+    #x = xk[1]
+    #x = x/norm(x[1:3])
+    return xk[1], kk, k, ordres[2], itt
 end
 
 
 
 function LMLOVO(xk, model, data, dim, nout, ε=1.0e-7, MAXIT=100)
-  newdata = sort_funcion_res(xk, model, data, nout)
-  R = func(xk, model, data)
-  J = diferential(model, xk, data, dim)
-  (m, n) = size(J)
-  Id = Matrix{Float64}(I, n, n)
-  k = 0
-  λ_up = 2.0
-  λ_down = 2.0
-  λ = 1.0
-  μ = 0.7
-  dk = 0.0
-  it = 0
-  while norm((J') * R, 2) > ε && k < MAXIT #&& newdata[2] > 10e-6
-    #display(norm((J') * R, 2))
-    dk = (J' * J + λ * Id) \ ((-J') * R)
-    md = 0.5 * (norm((R + J * dk), 2))^2 + λ * norm(dk, 2)^2
-    Rd = func(xk + dk, model, newdata[1])
-    ρk = (0.5 * norm(R, 2)^2 - 0.5 * norm(Rd, 2)^2) / (0.5 * norm(R, 2)^2 - md)
-    it = it + 1
-    if ρk < μ
-      λ = λ * λ_up
-    else
-      λ = λ / λ_down
-      xk = xk + dk
-      #xk = xk / norm(xk[1:3])
-      newdata = sort_funcion_res(xk, model, data, nout)
-      R = func(xk, model, newdata[1])
-      J = diferential(model, xk, newdata[1], dim)
-      k = k + 1
+    newdata = sort_funcion_res(xk, model, data, nout)
+    R = func(xk, model, data)
+    J = diferential(model, xk, data, dim)
+    (m, n) = size(J)
+    Id = Matrix{Float64}(I, n, n)
+    k = 0
+    λ_up = 2.0
+    λ_down = 2.0
+    λ = 1.0
+    μ = 0.7
+    dk = 0.0
+    it = 0
+    while norm((J') * R, 2) > ε && k < MAXIT #&& newdata[2] > 10e-6
+        #display(norm((J') * R, 2))
+        dk = (J' * J + λ * Id) \ ((-J') * R)
+        md = 0.5 * (norm((R + J * dk), 2))^2 + λ * norm(dk, 2)^2
+        Rd = func(xk + dk, model, newdata[1])
+        ρk = (0.5 * norm(R, 2)^2 - 0.5 * norm(Rd, 2)^2) / (0.5 * norm(R, 2)^2 - md)
+        it = it + 1
+        if ρk < μ
+            λ = λ * λ_up
+        else
+            λ = λ / λ_down
+            xk = xk + dk
+            #xk = xk / norm(xk[1:3])
+            newdata = sort_funcion_res(xk, model, data, nout)
+            R = func(xk, model, newdata[1])
+            J = diferential(model, xk, newdata[1], dim)
+            k = k + 1
+        end
     end
-  end
-  #xk = xk / norm(xk[1:3])
-  return xk, k, newdata[2], it
+    #xk = xk / norm(xk[1:3])
+    return xk, k, newdata[2], it
 end
 
 
 function sort_funcion_res(x, model, data, nout)
-  P = data
-  (n, m) = size(data)
-  v = zeros(n)
-  for i = 1:n
-    v[i] = (model(data[i, 1], x) - data[i, end])^2
-  end
-  indtrust = [1:n;]
-  for i = 1:n-nout+1
-    for j = i+1:n
-      if v[i] > v[j]
-        aux = v[j]
-        v[j] = v[i]
-        v[i] = aux
-        aux2 = indtrust[j]
-        indtrust[j] = indtrust[i]
-        indtrust[i] = aux2
-      end
+    P = data
+    (n, m) = size(data)
+    v = zeros(n)
+    for i = 1:n
+        v[i] = (model(data[i, 1], x) - data[i, end])^2
     end
-  end
-  #    println(indtrust[n-nout+1:n])
-  return P[indtrust[1:n-nout], :], sum(v[1:n-nout])
+    indtrust = [1:n;]
+    for i = 1:n-nout+1
+        for j = i+1:n
+            if v[i] > v[j]
+                aux = v[j]
+                v[j] = v[i]
+                v[i] = aux
+                aux2 = indtrust[j]
+                indtrust[j] = indtrust[i]
+                indtrust[i] = aux2
+            end
+        end
+    end
+    #    println(indtrust[n-nout+1:n])
+    return P[indtrust[1:n-nout], :], sum(v[1:n-nout])
 end
 
 
 function show(io::IO, fout::FitOutputType)
 
-  print(io, "  ▶ Output ◀ \n")
-  if Bool(fout.status) == true
-    print(io, "  ↳ Status (.status) = Convergent \n")
-  else
-    print(io, "  ↳ Status (.status) = Divergent \n")
-  end
-  print(io, "  ↳ Solution (.solution) = $(fout.solution) \n")
-  print(io, "  ↳ Number of iterations (.niter) = $(fout.niter) \n")
-  print(io, "  ↳ Minimum (.minimum) = $(fout.minimum) \n")
-  print(io, "  ↳ Number of function calls (.feval) = $(fout.feval) \n")
+    print(io, "  ▶ Output ◀ \n")
+    if Bool(fout.status) == true
+        print(io, "  ↳ Status (.status) = Convergent \n")
+    else
+        print(io, "  ↳ Status (.status) = Divergent \n")
+    end
+    print(io, "  ↳ Solution (.solution) = $(fout.solution) \n")
+    print(io, "  ↳ Number of iterations (.niter) = $(fout.niter) \n")
+    print(io, "  ↳ Minimum (.minimum) = $(fout.minimum) \n")
+    print(io, "  ↳ Number of function calls (.feval) = $(fout.feval) \n")
 end
