@@ -545,15 +545,15 @@ function Levenberg(model, x, data, dim, ε, λ_min=0.7)
   return x, k, it
 end
 
-function MinimalLevenbergMarquardt(model,x,data,dim,ε,λ_min=0.7,n)
+function MinimalLevenbergMarquardt(model,x,data,dim,ε,Id,λ_min=0.7)
     F = func(x, model, data)
     J = diferential(model, x, data, dim)
     xn = zeros(dim)
     λ = 1.0
     k = 1 
-    Id = Matrix{Float64}(I, n, n)
-    while norm((J') * F, 2) > ε && k <= 5 
-        d = (J' * J + λ * Id) \ ((-J') * F)
+    JtF = -(J')*F
+    while norm(JtF, 2) > ε && k <= 5 
+        d = (J' * J + λ * Id) \ (JtF)
         xn .= x .+ d
         Fn = func(xn,model,data)
         if norm(Fn, 2) <  norm(F, 2)
@@ -565,6 +565,7 @@ function MinimalLevenbergMarquardt(model,x,data,dim,ε,λ_min=0.7,n)
             end
             F .= Fn
             J = diferential(model, x, data, dim)
+            JtF = -(J')*F
         else
             λ = 2.0 * λ 
         end
@@ -572,25 +573,20 @@ function MinimalLevenbergMarquardt(model,x,data,dim,ε,λ_min=0.7,n)
     end
     return x 
 end
+
 function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
-    ordres = sort_funcion_res(xk[1], model, data, nout)
+    ordres = sort_funcion_res(xk, model, data, nout)
     antres = 0.0
     k = 1
-    kk = 0
-    itt = 0
+    n,_ = size(data)
+    Id = Matrix{Float64}(I, n, n)
     while abs(ordres[2] - antres) > ε
-        F = func(xk[1], model, ordres[1])
-        J = diferential(model, xk[1], ordres[1], dim)
         antres = ordres[2]
-        xk = Levenberg(model, xk[1], ordres[1], dim, ε)
-        kk = kk + xk[2]
-        itt = itt + xk[3]
-        ordres = sort_funcion_res(xk[1], model, data, nout)
+        xk = MinimalLevenbergMarquardt(model, xk, ordres[1], dim, ε, Id)
+        ordres = sort_funcion_res(xk, model, data, nout)
         k = k + 1
     end
-    #x = xk[1]
-    #x = x/norm(x[1:3])
-    return xk[1], kk, k, ordres[2], itt
+    return xk, k, ordres[2]
 end
 
 
