@@ -557,7 +557,7 @@ function MinimalLevenbergMarquardt(model,x,data,dim,ε,Id,λ_min=0.7)
         xn .= x .+ d
         Fn = func(xn,model,data)
         if norm(Fn, 2) <  norm(F, 2)
-            x = xn
+            x .= xn
             if λ < λ_min
                 λ = λ_min
             else
@@ -578,7 +578,7 @@ function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
     ordres = sort_funcion_res(xk, model, data, nout)
     antres = 0.0
     k = 1
-    n,_ = size(data)
+    _,n = size(data)
     Id = Matrix{Float64}(I, n, n)
     while abs(ordres[2] - antres) > ε
         antres = ordres[2]
@@ -589,72 +589,37 @@ function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
     return xk, k, ordres[2]
 end
 
-
-#Para rodar LMPers insira chute inicial, modelo, os pontos do problema, a dimensão, uma função de ordenação --- o arquivo de funções nos scripts possui uma função que chama sort_funcion_res, ela funciona para qualquer modelo e por ultimo a quantidade de outliers --- o chute inicial deve ser uma tupla, ou seja, algo do tipo ([1.0, 1.0, 1.0, 1.0],0) -- > o 0 é para realizar a contagem de ordenações
-function LMPers(xk, model, data, dim, nout, ε=1.0e-4)
-    ordres = sort_funcion_res(xk[1], model, data, nout)
-    antres = 0.0
-    k = 1
-    kk = 0
-    itt = 0
-    while abs(ordres[2] - antres) > ε
-        F = func(xk[1], model, ordres[1])
-        J = diferential(model, xk[1], ordres[1], dim)
-        #display(norm((J') * F, 2))
-        if norm((J') * F, 2) * 0.01 > 1.0e-4
-            ε = norm((J') * F, 2) * 0.01
-        else
-            ε = 1.0e-4
-        end
-        #display(norm((J') * F, 2))
-        antres = ordres[2]
-        xk = Levenberg(model, xk[1], ordres[1], dim, ε)
-        kk = kk + xk[2]
-        itt = itt + xk[3]
-        ordres = sort_funcion_res(xk[1], model, data, nout)
-        k = k + 1
-    end
-    #x = xk[1]
-    #x = x/norm(x[1:3])
-    return xk[1], kk, k, ordres[2], itt
-end
-
-
-
-function LMLOVO(xk, model, data, dim, nout, ε=1.0e-7, MAXIT=100)
-    newdata = sort_funcion_res(xk, model, data, nout)
+function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
+    ordres = sort_funcion_res(xk, model, data, nout)
     R = func(xk, model, data)
     J = diferential(model, xk, data, dim)
-    (m, n) = size(J)
+    (_, n) = size(J)
     Id = Matrix{Float64}(I, n, n)
-    k = 0
-    λ_up = 2.0
-    λ_down = 2.0
+    λ_min = 0.7
     λ = 1.0
-    μ = 0.7
-    dk = 0.0
-    it = 0
-    while norm((J') * R, 2) > ε && k < MAXIT #&& newdata[2] > 10e-6
-        #display(norm((J') * R, 2))
-        dk = (J' * J + λ * Id) \ ((-J') * R)
-        md = 0.5 * (norm((R + J * dk), 2))^2 + λ * norm(dk, 2)^2
-        Rd = func(xk + dk, model, newdata[1])
-        ρk = (0.5 * norm(R, 2)^2 - 0.5 * norm(Rd, 2)^2) / (0.5 * norm(R, 2)^2 - md)
-        it = it + 1
-        if ρk < μ
-            λ = λ * λ_up
-        else
-            λ = λ / λ_down
-            xk = xk + dk
-            #xk = xk / norm(xk[1:3])
-            newdata = sort_funcion_res(xk, model, data, nout)
-            R = func(xk, model, newdata[1])
-            J = diferential(model, xk, newdata[1], dim)
+    k = 0
+    JtR =  -J'*R 
+    xn = zeros(dim)
+    while norm(JtR, 2) > ε && k < MAXIT #&& newdata[2] > 10e-6
+        d = (J' * J + λ * Id) \ (JtR)
+        xn .= xk .+ d
+        Rn = func(xn, model, ordres[1])
+        if norm(Rn,2) < norm(R,2)
+            xk .= xn
+            if λ < λ_min 
+                λ = λ_min 
+            else 
+                λ = λ / 2.0 
+            end
+            R .= Rn 
+            ordres = sort_funcion_res(xk, model, data, nout)
+            R = func(xk, model, ordres[1])
+            J = diferential(model, xk, ordres[1], dim)
+            JtR =  -J'*R 
             k = k + 1
         end
     end
-    #xk = xk / norm(xk[1:3])
-    return xk, k, newdata[2], it
+    return xk, k, ordres[2]
 end
 
 
