@@ -494,7 +494,7 @@ function diferential(model, θ, data, dim)
   (m, n) = size(data)
   J = zeros(m, Int(dim))
   for i = 1:m
-    J[i, :] = grad_model!(cl2, data[i, 1], θ)
+    J[i, :] = grad_model!(cl2, data[i, 1:end-1], θ)
   end
   return J
 end
@@ -503,7 +503,7 @@ function func(x, model, data)
   (m, n) = size(data)
   F = zeros(m)
   for i = 1:m
-    F[i] = model(data[i, 1], x) - data[i, end]
+    F[i] = model(data[i, 1:end-1], x) - data[i, end]
   end
   return F
 end
@@ -545,119 +545,121 @@ function Levenberg(model, x, data, dim, ε, λ_min=0.7)
   return x, k, it
 end
 
-function MinimalLevenbergMarquardt(model,x,data,dim,ε,Id,λ_min=0.7)
-    F = func(x, model, data)
-    J = diferential(model, x, data, dim)
-    xn = zeros(dim)
-    λ = 1.0
-    k = 1 
-    JtF = -(J')*F
-    while norm(JtF, 2) > ε && k <= 5 
-        d = (J' * J + λ * Id) \ (JtF)
-        xn .= x .+ d
-        Fn = func(xn,model,data)
-        if norm(Fn, 2) <  norm(F, 2)
-            x .= xn
-            if λ < λ_min
-                λ = λ_min
-            else
-                λ = λ / 2.0
-            end
-            F .= Fn
-            J = diferential(model, x, data, dim)
-            JtF = -(J')*F
-        else
-            λ = 2.0 * λ 
-        end
-        k = k + 1
+function MinimalLevenbergMarquardt(model, x, data, dim, ε, Id, λ_min=0.7)
+  F = func(x, model, data)
+  J = diferential(model, x, data, dim)
+  xn = zeros(dim)
+  λ = 1.0
+  k = 1
+  JtF = -(J') * F
+  while norm(JtF, 2) > ε && k <= 5
+    d = (J' * J + λ * Id) \ (JtF)
+    xn .= x .+ d
+    Fn = func(xn, model, data)
+    if norm(Fn, 2) < norm(F, 2)
+      x .= xn
+      if λ < λ_min
+        λ = λ_min
+      else
+        λ = λ / 2.0
+      end
+      F .= Fn
+      J = diferential(model, x, data, dim)
+      JtF = -(J') * F
+    else
+      λ = 2.0 * λ
     end
-    return x 
+    k = k + 1
+  end
+  return x, k
 end
 
 function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
-    ordres = sort_funcion_res(xk, model, data, nout)
-    antres = 0.0
-    k = 1
-    Id = Matrix{Float64}(I, dim, dim)
-    while abs(ordres[2] - antres) > ε
-        antres = ordres[2]
-        xk = MinimalLevenbergMarquardt(model, xk, ordres[1], dim, ε, Id)
-        ordres = sort_funcion_res(xk, model, data, nout)
-        k = k + 1
-    end
-    return xk, k, ordres[2]
+  ordres = sort_funcion_res(xk[1], model, data, nout)
+  antres = 0.0
+  k = 1
+  kk = 0
+  Id = Matrix{Float64}(I, dim, dim)
+  while abs(ordres[2] - antres) > ε
+    antres = ordres[2]
+    xk = MinimalLevenbergMarquardt(model, xk[1], ordres[1], dim, ε, Id)
+    kk = kk + xk[2]
+    ordres = sort_funcion_res(xk[1], model, data, nout)
+    k = k + 1
+  end
+  return xk, kk, k, ordres[2]
 end
 
 function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
-    ordres = sort_funcion_res(xk, model, data, nout)
-    R = func(xk, model, data)
-    J = diferential(model, xk, data, dim)
-    Id = Matrix{Float64}(I, dim, dim)
-    λ_min = 0.7
-    λ = 1.0
-    k = 0
-    JtR =  -J'*R 
-    xn = zeros(dim)
-    while norm(JtR, 2) > ε && k < MAXIT #&& newdata[2] > 10e-6
-        d = (J' * J + λ * Id) \ (JtR)
-        xn .= xk .+ d
-        Rn = func(xn, model, ordres[1])
-        if norm(Rn,2) < norm(R,2)
-            xk .= xn
-            if λ < λ_min 
-                λ = λ_min 
-            else 
-                λ = λ / 2.0 
-            end
-            #R .= Rn 
-            ordres = sort_funcion_res(xk, model, data, nout)
-            R = func(xk, model, ordres[1])
-            J = diferential(model, xk, ordres[1], dim)
-            JtR =  -J'*R 
-        else 
-            λ = 2.0 * λ 
-        end
-        k = k + 1
+  ordres = sort_funcion_res(xk, model, data, nout)
+  R = func(xk, model, data)
+  J = diferential(model, xk, data, dim)
+  Id = Matrix{Float64}(I, dim, dim)
+  λ_min = 0.7
+  λ = 1.0
+  k = 0
+  JtR = -J' * R
+  xn = zeros(dim)
+  while norm(JtR, 2) > ε && k < MAXIT #&& newdata[2] > 10e-6
+    d = (J' * J + λ * Id) \ (JtR)
+    xn .= xk .+ d
+    Rn = func(xn, model, ordres[1])
+    if norm(Rn, 2) < norm(R, 2)
+      xk .= xn
+      if λ < λ_min
+        λ = λ_min
+      else
+        λ = λ / 2.0
+      end
+      #R .= Rn 
+      ordres = sort_funcion_res(xk, model, data, nout)
+      R = func(xk, model, ordres[1])
+      J = diferential(model, xk, ordres[1], dim)
+      JtR = -J' * R
+    else
+      λ = 2.0 * λ
     end
-    return xk, k, ordres[2]
+    k = k + 1
+  end
+  return xk, k, ordres[2]
 end
 
 
 function sort_funcion_res(x, model, data, nout)
-    P = data
-    (n, m) = size(data)
-    v = zeros(n)
-    for i = 1:n
-        v[i] = (model(data[i, 1], x) - data[i, end])^2
+  P = data
+  (n, m) = size(data)
+  v = zeros(n)
+  for i = 1:n
+    v[i] = (model(data[i, 1:end-1], x) - data[i, end])^2
+  end
+  indtrust = [1:n;]
+  for i = 1:n-nout+1
+    for j = i+1:n
+      if v[i] > v[j]
+        aux = v[j]
+        v[j] = v[i]
+        v[i] = aux
+        aux2 = indtrust[j]
+        indtrust[j] = indtrust[i]
+        indtrust[i] = aux2
+      end
     end
-    indtrust = [1:n;]
-    for i = 1:n-nout+1
-        for j = i+1:n
-            if v[i] > v[j]
-                aux = v[j]
-                v[j] = v[i]
-                v[i] = aux
-                aux2 = indtrust[j]
-                indtrust[j] = indtrust[i]
-                indtrust[i] = aux2
-            end
-        end
-    end
-    #    println(indtrust[n-nout+1:n])
-    return P[indtrust[1:n-nout], :], sum(v[1:n-nout])
+  end
+  #    println(indtrust[n-nout+1:n])
+  return P[indtrust[1:n-nout], :], sum(v[1:n-nout])
 end
 
 
 function show(io::IO, fout::FitOutputType)
 
-    print(io, "  ▶ Output ◀ \n")
-    if Bool(fout.status) == true
-        print(io, "  ↳ Status (.status) = Convergent \n")
-    else
-        print(io, "  ↳ Status (.status) = Divergent \n")
-    end
-    print(io, "  ↳ Solution (.solution) = $(fout.solution) \n")
-    print(io, "  ↳ Number of iterations (.niter) = $(fout.niter) \n")
-    print(io, "  ↳ Minimum (.minimum) = $(fout.minimum) \n")
-    print(io, "  ↳ Number of function calls (.feval) = $(fout.feval) \n")
+  print(io, "  ▶ Output ◀ \n")
+  if Bool(fout.status) == true
+    print(io, "  ↳ Status (.status) = Convergent \n")
+  else
+    print(io, "  ↳ Status (.status) = Divergent \n")
+  end
+  print(io, "  ↳ Solution (.solution) = $(fout.solution) \n")
+  print(io, "  ↳ Number of iterations (.niter) = $(fout.niter) \n")
+  print(io, "  ↳ Minimum (.minimum) = $(fout.minimum) \n")
+  print(io, "  ↳ Number of function calls (.feval) = $(fout.feval) \n")
 end
