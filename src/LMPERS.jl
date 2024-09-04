@@ -510,40 +510,6 @@ end
 
 #Para rodar Levenberg insira o modelo, o chute inicial, os dados disponíveis do modelo e a dimensão do modelo ---- > a função func devolve o vetor do modelo aplicado nos pontos data e a função diferential gera a matriz jacobiana do modelo
 
-function Levenberg(model, x, data, dim, ε, λ_min=0.7)
-  k = 0
-  F = func(x, model, data)
-  J = diferential(model, x, data, dim)
-  (m, n) = size(J)
-  xn = zeros(length(x))
-  Id = Matrix{Float64}(I, n, n)
-  λ = 1.0#norm((J') * F, 2) / (norm(F, 2)^2)
-  k1 = 2.0
-  k2 = 2.0
-  it = 0
-  while norm((J') * F, 2) > ε && k < 50
-    #display(norm((J') * F, 2))
-    d = (J' * J + λ * Id) \ ((-J') * F)
-    it = it + 1
-    xn = x + d
-    if 0.5 * norm(func(xn, model, data), 2)^2 < 0.5 * norm(func(x, model, data), 2)^2
-      x = xn
-      if λ < λ_min
-        λ = λ_min
-      else
-        λ = λ / k1
-      end
-      F = func(x, model, data)
-      J = diferential(model, x, data, dim)
-    else
-      λ = λ * k2
-    end
-    k = k + 1
-  end
-  #x = x / norm(x[1:3])
-  println(k)
-  return x, k, it
-end
 
 function MinimalLevenbergMarquardt(model, x, data, dim, ε, Id, λ_min=0.7)
   F = func(x, model, data)
@@ -552,7 +518,7 @@ function MinimalLevenbergMarquardt(model, x, data, dim, ε, Id, λ_min=0.7)
   λ = 1.0
   k = 1
   JtF = -(J') * F
-  while norm(JtF, 2) > ε && k <= 5
+  while norm(JtF, 2) > ε && k <= 15
     d = (J' * J + λ * Id) \ (JtF)
     xn .= x .+ d
     Fn = func(xn, model, data)
@@ -571,26 +537,26 @@ function MinimalLevenbergMarquardt(model, x, data, dim, ε, Id, λ_min=0.7)
     end
     k = k + 1
   end
-  return x, k
+  return x#, k
 end
 
 function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
-  ordres = sort_funcion_res(xk[1], model, data, nout)
+  ordres = sort_funcion_res(xk, model, data, nout)
   antres = 0.0
   k = 1
   kk = 0
   Id = Matrix{Float64}(I, dim, dim)
   while abs(ordres[2] - antres) > ε
     antres = ordres[2]
-    xk = MinimalLevenbergMarquardt(model, xk[1], ordres[1], dim, ε, Id)
-    kk = kk + xk[2]
-    ordres = sort_funcion_res(xk[1], model, data, nout)
+    xk = MinimalLevenbergMarquardt(model, xk, ordres[1], dim, ε, Id)
+    #kk = kk + xk[2]
+    ordres = sort_funcion_res(xk, model, data, nout)
     k = k + 1
   end
-  return xk, kk, k, ordres[2]
+  return xk#, kk, k, ordres[2]
 end
 
-function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
+function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-6, MAXIT=100)
   ordres = sort_funcion_res(xk, model, data, nout)
   R = func(xk, model, data)
   J = diferential(model, xk, data, dim)
