@@ -556,7 +556,7 @@ function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
   return xk#, kk, k, ordres[2]
 end
 
-function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-6, MAXIT=100)
+function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-7, MAXIT=100)
   ordres = sort_funcion_res(xk, model, data, nout)
   R = func(xk, model, data)
   J = diferential(model, xk, data, dim)
