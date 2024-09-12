@@ -1,4 +1,4 @@
-using GLMakie, Colors
+using GLMakie, Colors 
 
 
 """Essa função serve para gerar dados próximos a uma Esfera. Primeiro, geramos a esfera (responda de um ajuste) e depois geramos os dados. Isso é só para exemplificar
@@ -38,7 +38,6 @@ function build_sphere_plot(S::Sphere{Float32},x::Vector{Float64},y::Vector{Float
     hidedecorations!(ax)
     fig
 end
-
 """Esta função gera os pontos que estão sobre um plano. Note que os limites de rx e ry desta função devem ser maiores do que a points_near_plane para que o plano ultrapasse os limites dos dados e seja visualizado. Preciso passar os limites de rx e ry para parâmetros"""
 function points_in_plane(normal::Vector{Float64},d::Float64,n::Int)
     f(xy) = (-normal[1]*xy[1]-normal[2]*xy[2]-d)/normal[3]
@@ -68,7 +67,7 @@ function points_near_plane(normal::Vector{Float64},d::Float64,n::Int)
         x[i] = xy[i][1]
         y[i] = xy[i][2]
     end
-   return x+0.5*randn(length(x)),y+0.5*randn(length(y)),z+0.5*randn(length(z))
+    return x+0.5*randn(length(x)),y+0.5*randn(length(y)),z+0.5*randn(length(z))
 end
 
 """Funciona assim: 
@@ -87,6 +86,65 @@ function build_plane_plot(x::Vector{Float64},y::Vector{Float64},z::Vector{Float6
     # esconde os eixos
     hidespines!(ax)
     # esconde a grade
+    hidedecorations!(ax)
+    fig
+end
+
+
+function points_in_circle(u::Vector{Float64},v::Vector{Float64},c::Vector{Float64},r::Float64,n_points::Int)
+    θ = LinRange(0, 2π, n_points)
+    x = [r * cos(θ_i) * u[1] + r * sin(θ_i) * v[1] + c[1] for θ_i in θ]
+    y = [r * cos(θ_i) * u[2] + r * sin(θ_i) * v[2] + c[2] for θ_i in θ]
+    z = [r * cos(θ_i) * u[3] + r * sin(θ_i) * v[3] + c[3] for θ_i in θ]
+    return x,y,z 
+end
+
+function points_near_circle(x::Vector{Float64},y::Vector{Float64},z::Vector{Float64})
+    v = 0.5*randn(length(x))
+    return x+v,y+v,z+v
+end 
+
+""" Funciona assim:
+julia> x,y,z = points_in_circle([1.0,0,0.0],[0,1,0.0],[0.0,0.0,0.0],6.0,100)
+julia> xn,yn,zn = points_near_circle(x,y,z)
+julia> build_circle_plot(x,y,z,xn,yn,zn)
+"""
+function build_circle_plot(x::Vector{Float64},y::Vector{Float64},z::Vector{Float64},xn::Vector{Float64},yn::Vector{Float64},zn::Vector{Float64})
+    fig = Figure()  
+    ax = Axis3(fig[1, 1],aspect=(1,1,1), title = "Círculo ajustado a um conjunto de pontos")
+    limits!(ax, -10, 10, -10, 10, -10, 10)
+    scatter!(ax, xn, yn, zn, markersize = 10, strokewidth = 0, color = (:blue,0.7))
+    lines!(ax,x,y,z,color = :red, linewidth = 3)
+    hidespines!(ax)
+    hidedecorations!(ax)
+    fig
+end
+
+function points_in_line(P::Vector{Float64},u::Vector{Float64},n_points::Int64)
+    λ = LinRange(-2, 2, n_points)
+    x = [P[1]+λ_i*u[1] for λ_i ∈ λ]    
+    y = [P[2]+λ_i*u[2] for λ_i ∈ λ]
+    z = [P[3]+λ_i*u[3] for λ_i ∈ λ]
+    return x,y,z 
+end
+
+function points_near_line(x::Vector{Float64},y::Vector{Float64},z::Vector{Float64})
+    v = 0.1*randn(length(x))
+    return x+v,y+v,z+v
+end 
+
+""" Funciona assim:
+julia> x,y,z = points_in_line([1.0,0,0.0],[0,1,0.0],[0.0,0.0,0.0],6.0,100)
+julia> xn,yn,zn = points_near_line(x,y,z)
+julia> build_line_plot(x,y,z,xn,yn,zn)
+"""
+function build_line_plot(x::Vector{Float64},y::Vector{Float64},z::Vector{Float64},xn::Vector{Float64},yn::Vector{Float64},zn::Vector{Float64})
+    fig = Figure()  
+    ax = Axis3(fig[1, 1],aspect=(1,1,1), title = "Reta ajustada a um conjunto de pontos")
+    limits!(ax, -3, 3, -3, 3, -3, 3)
+    scatter!(ax, xn, yn, zn, markersize = 10, strokewidth = 0, color = (:blue,0.7))
+    lines!(ax,x,y,z,color = :red, linewidth = 3)
+    hidespines!(ax)
     hidedecorations!(ax)
     fig
 end
