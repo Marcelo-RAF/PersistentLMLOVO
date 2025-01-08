@@ -431,7 +431,6 @@ function build_problem(probtype::String, limit::Vector{Float64}, params::Vector{
     open("sphere2D_$(c[1])_$(c[2])_$(c[3])_$(nout).csv", "w") do io
       writedlm(io, FileMatrix)
     end
-
   end
   if probtype == "sphere3D"
     println("params need to be setup as [center,radious,npts,nout]")
@@ -518,7 +517,7 @@ function MinimalLevenbergMarquardt(model, x, data, dim, ε, Id, λ_min=0.7)
   λ = 1.0
   k = 1
   JtF = -(J') * F
-  while norm(JtF, 2) > ε && k <= 15
+  while norm(JtF, 2) > ε && k <= 100
     d = (J' * J + λ * Id) \ (JtF)
     xn .= x .+ d
     Fn = func(xn, model, data)
@@ -537,29 +536,30 @@ function MinimalLevenbergMarquardt(model, x, data, dim, ε, Id, λ_min=0.7)
     end
     k = k + 1
   end
-  return x#, k
+  display(norm(JtF, 2))
+  return x, k
 end
 
 function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
-  ordres = sort_funcion_res(xk, model, data, nout)
+  ordres = sort_funcion_res(xk[1], model, data, nout)
   antres = 0.0
   k = 1
   kk = 0
   Id = Matrix{Float64}(I, dim, dim)
   while abs(ordres[2] - antres) > ε
     antres = ordres[2]
-    xk = MinimalLevenbergMarquardt(model, xk, ordres[1], dim, ε, Id)
-    #kk = kk + xk[2]
-    ordres = sort_funcion_res(xk, model, data, nout)
+    xk = MinimalLevenbergMarquardt(model, xk[1], ordres[1], dim, ε, Id)
+    kk = kk + xk[2]
+    ordres = sort_funcion_res(xk[1], model, data, nout)
     k = k + 1
   end
-  return xk#, kk, k, ordres[2]
+  return xk[1], kk, k, ordres[2]
 end
 
-function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-7, MAXIT=100)
+function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
   ordres = sort_funcion_res(xk, model, data, nout)
-  R = func(xk, model, data)
-  J = diferential(model, xk, data, dim)
+  R = func(xk, model, ordres[1])
+  J = diferential(model, xk, ordres[1], dim)
   Id = Matrix{Float64}(I, dim, dim)
   λ_min = 0.7
   λ = 1.0

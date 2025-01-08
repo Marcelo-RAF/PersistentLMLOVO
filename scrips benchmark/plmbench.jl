@@ -2,7 +2,7 @@ using BenchmarkTools, CSV, DataFrames
 BenchmarkTools.DEFAULT_PARAMETERS.samples = 100
 BenchmarkTools.DEFAULT_PARAMETERS.seconds = 100
 set_problem = String.(readdlm("testenomes.txt"))
-csv_file = open("plmlovo.csv", "w")
+csv_file = open("persistentinfo5.csv", "w")
 #csv_file_benchmark = open("benchlm3_40.csv", "w")
 df = DataFrame()
 k = 0
@@ -18,7 +18,7 @@ for probname ∈ set_problem
     #ndif = norm(prob.solution - s[1])
     k = k + 1
     println(k)
-    row = DataFrame([(probname, prob.npts, prob.nout, prob.solution, s[1], s[2], s[3], s[4])])
+    row = DataFrame([(probname, prob.npts, prob.nout, prob.solution, s[1], s[2], s[3], s[4])])#, median(a.times) / 1e9)])
     df = vcat(df, row)
     #benchmark_row = DataFrame([(probname, prob.npts, prob.nout, minimum(a.times) / 1e9, median(a.times) / 1e9, maximum(a.times) / 1e9)])
     #benchmark_df = vcat(benchmark_df, benchmark_row)

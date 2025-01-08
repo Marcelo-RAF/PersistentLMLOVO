@@ -29,7 +29,7 @@ julia> build_sphere_plot(S,x,y,z)
 """
 function build_sphere_plot(S::Sphere{Float32},x::Vector{Float64},y::Vector{Float64},z::Vector{Float64})
     fig = Figure()
-    ax = Axis3(fig[1, 1],aspect=(1,1,1), title = "Esfera ajustada a um conjunto de pontos")
+    ax = Axis3(fig[1, 1],aspect=(1,1,1))#, title = "Esfera ajustada a um conjunto de pontos")
     scatter!(ax, x, y, z, markersize = 15, strokewidth = 0, color = (:blue,0.7))
     mesh!(ax,S,color = (:red,0.4),transparency = true)
     # esconde os eixos
