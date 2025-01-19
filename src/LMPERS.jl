@@ -28,6 +28,7 @@ end
 function load_problem(filename::String)
   prob_matrix = readdlm(filename, ':')
   (m, n) = size(prob_matrix)
+
   if m == 10
     return FitProbType(prob_matrix[1, 2], eval(Meta.parse(prob_matrix[2, 2])), prob_matrix[3, 2], prob_matrix[4, 2], eval(Meta.parse(prob_matrix[5, 2])), prob_matrix[6, 2], prob_matrix[7, 2], prob_matrix[8, 2], eval(Meta.parse(prob_matrix[9, 2])), prob_matrix[10, 2])
   elseif m == 11
@@ -536,24 +537,23 @@ function MinimalLevenbergMarquardt(model, x, data, dim, ε, Id, λ_min=0.7)
     end
     k = k + 1
   end
-  display(norm(JtF, 2))
-  return x, k
+  return x#, k
 end
 
 function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
-  ordres = sort_funcion_res(xk[1], model, data, nout)
+  ordres = sort_funcion_res(xk, model, data, nout)
   antres = 0.0
-  k = 1
-  kk = 0
+  #k = 1
+  #kk = 0
   Id = Matrix{Float64}(I, dim, dim)
   while abs(ordres[2] - antres) > ε
     antres = ordres[2]
-    xk = MinimalLevenbergMarquardt(model, xk[1], ordres[1], dim, ε, Id)
-    kk = kk + xk[2]
-    ordres = sort_funcion_res(xk[1], model, data, nout)
-    k = k + 1
+    xk = MinimalLevenbergMarquardt(model, xk, ordres[1], dim, ε, Id)
+    #kk = kk + xk[2]
+    ordres = sort_funcion_res(xk, model, data, nout)
+    #k = k + 1
   end
-  return xk[1], kk, k, ordres[2]
+  return xk#, kk, k, ordres[2]
 end
 
 function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
@@ -587,7 +587,7 @@ function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
     end
     k = k + 1
   end
-  return xk, k, ordres[2]
+  return xk#, k, ordres[2]
 end
 
 

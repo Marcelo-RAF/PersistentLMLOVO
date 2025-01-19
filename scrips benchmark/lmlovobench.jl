@@ -15,10 +15,10 @@ for probname ∈ set_problem
     xk = MinimalLevenbergMarquardt(prob.model, ones(prob.dim), prob.data, prob.dim, 1.0e-3, Matrix{Float64}(I, prob.dim, prob.dim))
     #xk = ones(prob.dim)
     s = MinimalLMLOVO(xk, prob.model, prob.data, prob.dim, prob.nout)
-    #a = @benchmark MinimalLMLOVO($xk, $prob.model, $prob.data, $prob.dim, $prob.nout)
+    a = @benchmark MinimalLMLOVO($xk, $prob.model, $prob.data, $prob.dim, $prob.nout)
     k = k + 1
     println(k)
-    row = DataFrame([(probname, prob.npts, prob.nout, prob.solution, s[1], s[2], s[3])])#, median(a.times) / 1e9)])
+    row = DataFrame([(probname, prob.npts, prob.nout, prob.solution, s[1], s[2], s[3], median(a.times) / 1e9)])
     df = vcat(df, row)
     CSV.write(csv_file, df)
   catch e
