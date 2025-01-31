@@ -1,4 +1,4 @@
-using DelimitedFiles, BenchmarkTools, CSV, DataFrames
+using DelimitedFiles, BenchmarkTools, CSV, DataFrames, LinearAlgebra
 BenchmarkTools.DEFAULT_PARAMETERS.samples = 100
 BenchmarkTools.DEFAULT_PARAMETERS.seconds = 100
 set_problem = String.(readdlm("testenomes.txt"))

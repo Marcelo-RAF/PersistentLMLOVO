@@ -321,7 +321,7 @@ function diferential(model, θ, data, dim)
     if n == 2
       inputs = data[i, 1]
     else
-      inputs = data[i, 1:(n-1)]
+      inputs = data[i, 1:end-1]
     end
     J[i, :] = grad_model!(cl2, inputs, θ)
   end
@@ -335,7 +335,7 @@ function func(x, model, data)
     if n == 2
       inputs = data[i, 1]
     else
-      inputs = data[i, 1:(n-1)]
+      inputs = data[i, 1:end-1]
     end
     F[i] = model(inputs, x) - data[i, end]
   end
@@ -433,7 +433,7 @@ function sort_funcion_res(x, model, data, nout)
     if m == 2
       inputs = data[i, 1]
     else
-      inputs = data[i, 1:(n-1)]
+      inputs = data[i, 1:end-1]
     end
     v[i] = (model(inputs, x) - data[i, end])^2
   end
