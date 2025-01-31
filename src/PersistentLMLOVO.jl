@@ -1,4 +1,12 @@
+module PersistentLMLOVO
+
 using ForwardDiff, DelimitedFiles, LinearAlgebra
+
+export load_problem, build_problem, visualize, FitProbType, FitOutputType, MinimalLevenbergMarquardt, MinimalLMPersistent, MinimalLMLOVO
+
+import Base.show
+
+
 
 struct FitProbType
   name::String
@@ -147,39 +155,6 @@ function build_problem(probtype::String, limit::Vector{Float64}, params::Vector{
       writedlm(io, FileMatrix)
     end
   end
-  if probtype == "exponencial"
-    println("params need to be setup as [vector, npts, nout]")
-    p = [params[1], params[2]]
-    npts = Int(params[3])
-    nout = Int(params[4])
-    t = range(0.0, stop=15.0, length=npts)
-    x = zeros(npts)
-    y = zeros(npts)
-    ruid = randn(npts)
-    for i = 1:npts
-      x[i] = t[i]
-      y[i] = p[1] * exp(-p[2] * x[i]) + ruid[i]
-    end
-    k = 1
-    iout = []
-    while k <= nout
-      i = rand([1:npts;])
-      if i ∉ iout
-        push!(iout, i)
-        k = k + 1
-      end
-    end
-    r = 3
-    for k = 1:nout
-      y[iout[k]] = y[iout[k]] + rand([-(1 + 0.25)*r:0.1:(1+0.25)*r;])#rand([-(1 + 0.25)*r:0.1:(1+0.25)*r;])
-    end
-
-    FileMatrix = ["name :" "exponencial"; "data :" [[x y]]; "npts :" npts; "nout :" nout; "model :" "(x,t) -> t[1]*exp(-t[2]*x) "; "dim :" 2; "cluster :" "false"; "noise :" "false"; "solution :" [push!(p)]; "description :" "type: exponencial function"]
-
-    open("exponencial_$(p[1])_$(p[2])_$(nout).csv", "w") do io
-      writedlm(io, FileMatrix)
-    end
-  end
   if probtype == "cubic"
     println("params need to be setup as [vector, npts, nout]")
     p = [params[1], params[2], params[3], params[4]]
@@ -191,7 +166,7 @@ function build_problem(probtype::String, limit::Vector{Float64}, params::Vector{
     sgn = sign(randn())
     for i = 1:npts
       x[i] = t[i]
-      y[i] = p[1] * x[i]^3 + p[2] * x[i]^2 + p[3] * x[i] + p[4] + (1.0 + 2 * rand()) * 7.0 * sgn
+      y[i] = p[1] * x[i]^3 + p[2] * x[i]^2 + p[3] * x[i] + p[4] #+ (1.0 + 2 * rand()) * 7.0 * sgn
     end
     k = 1
     iout = []
@@ -242,157 +217,6 @@ function build_problem(probtype::String, limit::Vector{Float64}, params::Vector{
     FileMatrix = ["name :" "line2d"; "data :" [[x y]]; "npts :" npts; "nout :" nout; "model :" "(x,t) -> t[1]*x + t[2]"; "dim :" 2; "cluster :" "false"; "noise :" "false"; "solution :" [push!(p)]; "description :" "type2: line model"]
 
     open("line2d_$(p[1])_$(p[2])_$(nout).csv", "w") do io
-      writedlm(io, FileMatrix)
-    end
-
-  end
-  if probtype == "line3d"
-    println("params need to be setup as [point,direction,npts,nout]")
-    p0 = [params[1], params[2], params[3]]
-    u = [params[4], params[5], params[6]]
-    npts = Int(params[7])
-    pp = range(-50.0, stop=50.0, length=npts)
-    x = zeros(npts)
-    y = zeros(npts)
-    z = zeros(npts)
-    ruid = randn(3, npts)
-    for i = 1:npts
-      for j = 1:npts
-        λ = rand(pp)
-        x[i] = p0[1] + λ * u[1] + ruid[1, i]
-        y[i] = p0[2] + λ * u[2] + ruid[2, i]
-        z[i] = p0[3] + λ * u[3] + ruid[3, i]
-      end
-    end
-    nout = Int(params[8])
-    k = 1
-    iout = []
-    while k <= nout
-      i = rand([1:npts;])
-      if i ∉ iout
-        push!(iout, i)
-        k = k + 1
-      end
-    end
-    r = 3.0
-    for k = 1:nout
-      x[iout[k]] = x[iout[k]] + rand([-(1 + 0.25)*r:0.1:(1+0.25)*r;])
-      y[iout[k]] = y[iout[k]] + rand([-(1 + 0.25)*r:0.1:(1+0.25)*r;])
-      z[iout[k]] = z[iout[k]] + rand([-(1 + 0.25)*r:0.1:(1+0.25)*r;])
-    end
-    #FileMatrix = ["name :" "line3d"; "data :" [[x y z]]; "npts :" npts; "nout :" nout; "model :" "(x,t) -> (x[1]-t[1])^2 + (x[2]-t[2])^2 - t[3]^2"; "dim :" 3; "cluster :" "false"; "noise :" "false"; "solution :"[push!(u)]; "description :" [[p0]]]
-
-    FileMatrix = ["name :" "line3d"; "data :" [[x y z]]; "npts :" npts; "nout :" nout; "model :" "(x,t) -> (x[1]-t[1])^2 + (x[2]-t[2])^2 +(x[3]-t[3])^2 - t[4]^2"; "dim :" 3; "cluster :" "false"; "noise :" "true"; "solution :" [push!(u, r)]; "description :" [[p0]]]
-
-    open("line3d_$(u[1])_$(u[2])_$(u[3])_$(nout).csv", "w") do io
-      writedlm(io, FileMatrix)
-    end
-  end
-  if probtype == "plane"
-    println("params need to be setup as [point,directions,npts,nout]")
-    p0 = [params[1], params[2], params[3]]
-    u = [params[4], params[5], params[6]]
-    v = [params[7], params[8], params[9]]
-    npts = Int(params[10])
-    # λ = range(0, stop = 66, length=npts)
-    # μ = range(-50, stop = 5, length=npts)
-    pp = range(-10.0, stop=10.0, length=npts)
-    x = zeros(npts)
-    y = zeros(npts)
-    z = zeros(npts)
-    w = zeros(npts)
-    vn = cross(u, v)
-    vn = vn / norm(vn)
-    d = dot(vn, p0)
-    vn = push!(vn, d)
-    ruid = randn(3, npts)
-    sgn = sign(randn())
-    for i = 1:npts
-      for j = 1:npts
-        λ = rand(pp)
-        μ = rand(pp)
-        x[i] = p0[1] + λ * u[1] + μ * v[1] + ruid[1, i] #(1.0+2*rand()) * 7.0*sgn#
-        y[i] = p0[2] + λ * u[2] + μ * v[2] + ruid[2, i]
-        z[i] = p0[3] + λ * u[3] + μ * v[3] + ruid[3, i]
-      end
-    end
-    nout = Int(params[11])
-    k = 1
-    iout = []
-    while k <= nout
-      i = rand([1:npts;])
-      if i ∉ iout
-        push!(iout, i)
-        k = k + 1
-      end
-    end
-    r = 5.0
-    for k = 1:nout
-      x[iout[k]] = x[iout[k]] + rand([-(1 + 0.25)*r:0.1:(1+0.25)*r;])
-      y[iout[k]] = y[iout[k]] + rand([-(1 + 0.25)*r:0.1:(1+0.25)*r;])
-      z[iout[k]] = z[iout[k]] + rand([-(1 + 0.25)*r:0.1:(1+0.25)*r;])
-    end
-    FileMatrix = ["name :" "plane"; "data :" [[x y z]]; "npts :" npts; "nout :" nout; "model :" "(x,t) -> x[1]*t[1] + x[2]*t[2] + x[3]*t[3] + t[4]"; "dim :" 4; "cluster :" "false"; "noise :" "false"; "solution :" [push!(vn)]; "description :" [[p0, p0]]]
-
-    open("plane_$(vn[1])_$(vn[2])_$(vn[3])_$(nout).csv", "w") do io
-      writedlm(io, FileMatrix)
-    end
-  end
-  if probtype == "circle3d"
-    println("params need to be setup as [center,radious,npts,nout]")
-    c = [params[1], params[2], params[3]]
-    r = params[4]
-    u = [params[5], params[6], params[7]]
-    v = [params[8], params[9], params[10]]
-    npts = Int(params[11])
-    u = u / norm(u)
-    h = v - (dot(v, u) / norm(u)^2) * u
-    v = h / norm(h)
-    u = round.(u, digits=1)
-    v = round.(v, digits=1)
-    vn = cross(u, v) / norm(cross(u, v))
-    vnc = vcat(vn, c)
-    λ = [0:4/npts:1;]
-    w = zeros(Int(3.0), npts)
-    #h = zeros(Int(3.0), npts)
-    nn = zeros(npts)
-    x = zeros(npts)
-    y = zeros(npts)
-    z = zeros(npts)
-    for i = 1:Int(round(npts / 4))
-      w[:, i] = c + r * ((λ[i] * u + (1 - λ[i]) * v) / (norm(λ[i] * u + (1 - λ[i]) * v)))
-    end
-    for i = (Int(round(npts / 4))+1):Int(round(npts / 2))
-      w[:, i] = c + r * ((λ[i-(Int(round(npts / 4)))] * (-u) + (1 - λ[i-(Int(round(npts / 4)))]) * v) / (norm(λ[i-(Int(round(npts / 4)))] * (-u) + (1 - λ[i-(Int(round(npts / 4)))]) * v)))
-    end
-    for i = (Int(round(npts / 2))+1):Int(round(3 * npts / 4))
-      w[:, i] = c + r * ((λ[i-(Int(round(npts / 2)))] * u + (1 - λ[i-(Int(round(npts / 2)))]) * (-v)) / (norm(λ[i-(Int(round(npts / 2)))] * u + (1 - λ[i-(Int(round(npts / 2)))]) * (-v))))
-    end
-    for i = (Int(round(3 * npts / 4))+1):npts
-      w[:, i] = c + r * ((λ[i-(Int(round(3 * npts / 4)))] * (-u) + (1 - λ[i-(Int(round(3 * npts / 4)))]) * (-v)) / (norm((λ[i-(Int(round(3 * npts / 4)))] * (-u) + (1 - λ[i-(Int(round(3 * npts / 4)))]) * (-v)))))
-    end
-    nout = Int(params[12])
-    k = 1
-    iout = []
-    while k <= nout
-      i = rand([1:npts;])
-      if i ∉ iout
-        push!(iout, i)
-        k = k + 1
-      end
-    end
-    for k = 1:nout
-      w[:, iout[k]] = w[:, iout[k]] + [rand([-0.5*r:0.1:0.5*r;]), rand([-0.5*r:0.1:0.5*r;]), rand([-0.5*r:0.1:0.5*r;])]
-    end
-    G = randn(3, npts)
-    for i = 1:npts
-      x[i] = w[1, i] #+ G[1, i]
-      y[i] = w[2, i] #+ G[2, i]
-      z[i] = w[3, i] #+ G[3, i]
-    end
-    FileMatrix = ["name :" "circle3d"; "data :" [[x y z]]; "npts :" npts; "nout :" nout; "model :" "(x,t) -> ( (x[1] - t[4])*t[1] +(x[2]-t[5])*t[2] +(x[3]-t[6])*t[3])^2 + ((x[1]-t[4])^2 + (x[2]-t[5])^2 + (x[3]-t[6])^2 - t[7]^2)^2"; "dim :" 7; "cluster :" "false"; "noise :" "false"; "solution :" [push!(vnc, r)]; "description :" [[u, v]]]
-
-    open("circle3D_$(c[1])_$(c[2])_$(c[3])_$(r)_$(nout).csv", "w") do io
       writedlm(io, FileMatrix)
     end
   end
@@ -494,7 +318,12 @@ function diferential(model, θ, data, dim)
   (m, n) = size(data)
   J = zeros(m, Int(dim))
   for i = 1:m
-    J[i, :] = grad_model!(cl2, data[i, 1:end-1], θ)
+    if n == 2
+      inputs = data[i, 1]
+    else
+      inputs = data[i, 1:(n-1)]
+    end
+    J[i, :] = grad_model!(cl2, inputs, θ)
   end
   return J
 end
@@ -503,7 +332,12 @@ function func(x, model, data)
   (m, n) = size(data)
   F = zeros(m)
   for i = 1:m
-    F[i] = model(data[i, 1:end-1], x) - data[i, end]
+    if n == 2
+      inputs = data[i, 1]
+    else
+      inputs = data[i, 1:(n-1)]
+    end
+    F[i] = model(inputs, x) - data[i, end]
   end
   return F
 end
@@ -537,13 +371,13 @@ function MinimalLevenbergMarquardt(model, x, data, dim, ε, Id, λ_min=0.7)
     end
     k = k + 1
   end
-  return x#, k
+  return x
 end
 
 function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
   ordres = sort_funcion_res(xk, model, data, nout)
   antres = 0.0
-  #k = 1
+  k = 1
   #kk = 0
   Id = Matrix{Float64}(I, dim, dim)
   while abs(ordres[2] - antres) > ε
@@ -551,12 +385,12 @@ function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
     xk = MinimalLevenbergMarquardt(model, xk, ordres[1], dim, ε, Id)
     #kk = kk + xk[2]
     ordres = sort_funcion_res(xk, model, data, nout)
-    #k = k + 1
+    k = k + 1
   end
-  return xk#, kk, k, ordres[2]
+  return xk, k, ordres[1], ordres[2]
 end
 
-function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
+function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-8, MAXIT=100)
   ordres = sort_funcion_res(xk, model, data, nout)
   R = func(xk, model, ordres[1])
   J = diferential(model, xk, ordres[1], dim)
@@ -587,7 +421,7 @@ function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
     end
     k = k + 1
   end
-  return xk#, k, ordres[2]
+  return xk, k, ordres[2]
 end
 
 
@@ -596,7 +430,12 @@ function sort_funcion_res(x, model, data, nout)
   (n, m) = size(data)
   v = zeros(n)
   for i = 1:n
-    v[i] = (model(data[i, 1:end-1], x) - data[i, end])^2
+    if m == 2
+      inputs = data[i, 1]
+    else
+      inputs = data[i, 1:(n-1)]
+    end
+    v[i] = (model(inputs, x) - data[i, end])^2
   end
   indtrust = [1:n;]
   for i = 1:n-nout+1
@@ -628,4 +467,6 @@ function show(io::IO, fout::FitOutputType)
   print(io, "  ↳ Number of iterations (.niter) = $(fout.niter) \n")
   print(io, "  ↳ Minimum (.minimum) = $(fout.minimum) \n")
   print(io, "  ↳ Number of function calls (.feval) = $(fout.feval) \n")
+end
+
 end
