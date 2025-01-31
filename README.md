@@ -58,6 +58,11 @@ julia> MinimalLMLOVO(xk, prob.model, prob.data, prob.dim, prob.nout)
 
 Where `xk` is the initial guess with dimensions compatible with the problem being analyzed.
 
+To reproduce comparison tests between **Persistent LMLOVO** and **LMLOVO**, use the benchmark scripts available at the following link in the directory of the problems you want to compare:
+
+[![Benchmark Scripts](https://img.shields.io/badge/Benchmark%20Scripts-Link-blue)](https://github.com/Marcelo-RAF/PersistentLMLOVO/tree/main/scripts)
+
+There are two scripts, `lmlovobench.jl` and `plmlovobench.jl`, which generate the files `lmlovoinfo.csv` and `plmlovoinfo.csv`, respectively. These files contain the problem names, the number of points, the number of outliers, the algorithm's solution, the residual found (the sum of the distances from the problem points to the solution), and the median execution time for each problem run 100 times.
 
 
 ### Authors

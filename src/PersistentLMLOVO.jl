@@ -377,7 +377,7 @@ end
 function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
   ordres = sort_funcion_res(xk, model, data, nout)
   antres = 0.0
-  k = 1
+  #k = 1
   #kk = 0
   Id = Matrix{Float64}(I, dim, dim)
   while abs(ordres[2] - antres) > ε
@@ -385,9 +385,9 @@ function MinimalLMPersistent(xk, model, data, dim, nout, ε=1.0e-4)
     xk = MinimalLevenbergMarquardt(model, xk, ordres[1], dim, ε, Id)
     #kk = kk + xk[2]
     ordres = sort_funcion_res(xk, model, data, nout)
-    k = k + 1
+   # k = k + 1
   end
-  return xk, k, ordres[2]
+  return xk, ordres[2]
 end
 
 function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
@@ -421,7 +421,7 @@ function MinimalLMLOVO(xk, model, data, dim, nout, ε=1.0e-4, MAXIT=100)
     end
     k = k + 1
   end
-  return xk, k, ordres[2]
+  return xk, ordres[2]
 end
 
 
