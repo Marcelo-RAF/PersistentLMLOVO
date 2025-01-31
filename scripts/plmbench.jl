@@ -5,6 +5,7 @@ set_problem = String.(readdlm("testenomes.txt"))
 csv_file = open("plmlovoinfo.csv", "w")
 df = DataFrame()
 for probname ∈ set_problem
+  global df
   log_file = open("logpers.txt", "w")
   prob = load_problem(probname)
   solved = false
