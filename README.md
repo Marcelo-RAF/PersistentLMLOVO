@@ -7,7 +7,9 @@ This project focuses on solving detection problems using an algorithm called **P
 This package is not yet available in `Metadata.jl`, so it cannot be installed directly using the Julia package manager. To install it, follow these steps:
 
 1. Open the Julia REPL.
+
 2. Press `]` to enter Pkg mode.
+
 3. Run the following command:
 
    ```julia
@@ -15,6 +17,7 @@ This package is not yet available in `Metadata.jl`, so it cannot be installed di
    ```
 
 4. After installation, press Backspace to return to the Julia REPL.
+
 5. To start using the package, simply run:
 
    ```julia
@@ -39,17 +42,23 @@ Each category contains problems with only outliers as well as problems with nois
 
 To run an example, navigate to the directory where your test data is stored. Suppose you have a file named `line2d_2.0_-4.0_15.csv`, you can load it with:
 
-   ```julia
-   julia> prob = load_problem("line2d_2.0_-4.0_15.csv")
-   ```
+```julia
+julia> prob = load_problem("line2d_2.0_-4.0_15.csv")
+```
 
-Once the problem is loaded, you can perform detection using the **Persistent LMLOVO** algorithm as follows:
+Once the problem is loaded, you can perform detection using either the **Persistent LMLOVO** or **LMLOVO** algorithm as follows:
 
-   ```julia
-   julia> MinimalLMPersistent(xk, prob.model, prob.data, prob.dim, prob.nout)
-   ```
+```julia
+julia> MinimalLMPersistent(xk, prob.model, prob.data, prob.dim, prob.nout)
+```
+
+```julia
+julia> MinimalLMLOVO(xk, prob.model, prob.data, prob.dim, prob.nout)
+```
 
 Where `xk` is the initial guess with dimensions compatible with the problem being analyzed.
+
+
 
 ### Authors
 
